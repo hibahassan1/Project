@@ -1,0 +1,38 @@
+name: Keep Streamlit App Alive (Playwright)
+
+on:
+  schedule:
+    - cron: '0 6,18 * * *'   # twice a day, adjust as needed
+  workflow_dispatch:
+
+jobs:
+  visit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+
+      - name: Visit the app like a real user
+        run: |
+          cat << 'EOF' > visit.js
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            await page.goto('https://soveil.streamlit.app/', { waitUntil: 'networkidle', timeout: 60000 });
+            // give the websocket a moment to establish
+            await page.waitForTimeout(5000);
+            console.log('Visited app, title:', await page.title());
+            await browser.close();
+          })();
+          EOF
+          node visit.js
